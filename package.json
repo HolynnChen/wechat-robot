@@ -1,0 +1,21 @@
+{
+  "name": "wechat-robot",
+  "version": "1.0.0",
+  "description": "try to receive and send wechat message",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "zzzz",
+  "license": "ISC",
+  "dependencies": {
+    "events": "^1.1.1",
+    "fs": "0.0.1-security",
+    "http": "0.0.0",
+    "https": "^1.0.0",
+    "querystring": "^0.2.0",
+    "request": "^2.83.0",
+    "socket.io": "^2.0.4",
+    "url": "^0.11.0"
+  }
+}
