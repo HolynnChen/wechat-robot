@@ -1,7 +1,7 @@
-var http=require('http');
-var https=require('https');
+//var http=require('http');
+//var https=require('https');
 var request=require('request');
-var querystring= require('querystring');
+//var querystring= require('querystring');
 var fs=require('fs');
 
 function wx_login(){
@@ -24,6 +24,7 @@ function wx_login(){
 		me.untonn=new Array();
 		me.untogn=new Array();
 		me.user['DeviceID']="e" + ("" + Math.random().toFixed(15)).substring(2, 17);//copy from wechat's js which named index_e01fd8a.js
+		me.message_deal=me.message_deal||me._dealmsg_;
 	};
 	this.getuuid=(resolve,reject)=>{
 		var options={
@@ -34,7 +35,8 @@ function wx_login(){
 			if(!e & r.statusCode==200){
 				let re=b.match(/\s=\s.*?(?=;)/g);
 				me.uuid=re[1].replace(' = ','').replace(/"/g,'');
-				resolve(me.uuid);
+				//resolve(me.uuid);
+				request('https://login.weixin.qq.com/qrcode/'+me.uuid).pipe(fs.createWriteStream('test.jpg')).on('close',()=>{resolve()})
 			}
 		})
 	};
@@ -168,7 +170,6 @@ function wx_login(){
 		})
 	};
 	this.waitforsync=(resolve,reject)=>{
-		me.message_deal=me.message_deal||me._dealmsg_;
 		reqc();
 		function reqc(){
 			var options={
@@ -178,8 +179,8 @@ function wx_login(){
 			}
 			request.get(options,(e,r,b)=>{
 				if(!e&r.statusCode==200){
-					if(me.message_deal=="null")return;
-					if(me.message_deal=="exit"){resolve(b);return;};
+					if(me.message_deal==="null")return;
+					if(me.message_deal==="exit"){resolve(b);return;};
 					b=b.match(/\{.*?\}/g)[0].replace('{','').replace('}','').split(',');
 					if(b[0].split(':')[1]!='"0"'){console.log('异常退出');reject('reason:retcode='+b[0].split(':')[1]);return;};
 					if(b[0].split(':')[1]!='"0"' || b[1].split(':')[1]!='"0"'){deal();}else{reqc()};
@@ -206,8 +207,8 @@ function wx_login(){
 			}
 			request.post(options,(e,r,b)=>{
 				if(!e&r.statusCode==200){
-					if(me.message_deal=="null")return;
-					if(me.message_deal=="exit"){resolve(b);return;};
+					if(me.message_deal==="null")return;
+					if(me.message_deal==="exit"){resolve(b);return;};
 					me.message['SyncKey']=b.SyncKey;
 					//me.message_deal(b.AddMsgList);
 					for(let i=0;i<b.AddMsgList.length;i++)me.message_deal(b.AddMsgList[i]);
@@ -216,30 +217,32 @@ function wx_login(){
 			})
 		}
 	};
-	this.search=(list,pass,resolve)=>{
-		if(list==[]){resolve(pass);return;}
-		var options={
-			url:'https://wx2.qq.com/cgi-bin/mmwebwx-bin/webwxbatchgetcontact?type=ex&r='+Date.now()+'&lang=zh_CN&pass_ticket='+me.user.pass_ticket,
-			jar:me.j,
-			json:{
-				BaseRequest:{
-					Uin:me.user.uin,
-					Sid:me.user.wxsid,
-					Skey:me.user.skey,
-					DeviceID:me.user.DeviceID,
-				},
-				Count:list.length,
-				List:list,
+	this.search=(list,pass,doit)=>{
+		if(list==[]){
+			doit(pass);
+		}else{
+			var options={
+				url:'https://wx2.qq.com/cgi-bin/mmwebwx-bin/webwxbatchgetcontact?type=ex&r='+Date.now()+'&lang=zh_CN&pass_ticket='+me.user.pass_ticket,
+				jar:me.j,
+				json:{
+					BaseRequest:{
+						Uin:me.user.uin,
+						Sid:me.user.wxsid,
+						Skey:me.user.skey,
+						DeviceID:me.user.DeviceID,
+					},
+					Count:list.length,
+					List:list,
 
+				}
 			}
+			request.post(options,(e,r,b)=>{
+				if(!e&r.statusCode==200){
+					for(let i=0;i<b.ContactList.length;i++)me.untonn[b.ContactList[i].UserName]=b.ContactList[i].NickName;
+					doit(pass);
+				}
+			})
 		}
-		request.post(options,(e,r,b)=>{
-			if(!e&r.statusCode==200){
-				//me.untonn[b.ContactList[0].UserName]=b.ContactList[0].NickName;
-				for(let i=0;i<b.ContactList.length;i++)me.untonn[b.ContactList[i].UserName]=b.ContactList[i].NickName;
-				resolve(pass);
-			}
-		})
 	}
 
 	//base function
@@ -290,7 +293,7 @@ function wx_login(){
 				}else{//非群消息
 					if(msg.FromUserName!=me.user.UserName){
 						if(!(me.untogn[msg.FromUserName]||me.untonn[msg.FromUserName])){
-							ps.push(me._msglist_(FromUserName));
+							ps.push(me._msglist_(msg.FromUserName));
 						};
 						pass['FromUserName']=msg.FromUserName;
 						pass['content']=msg.Content;
@@ -301,7 +304,7 @@ function wx_login(){
 						me.search(ps,pass,doit);
 					}else{
 						if(!(me.untogn[msg.ToUserName]||me.untonn[msg.ToUserName])){
-							ps.push(me._msglist_(ToUserName));
+							ps.push(me._msglist_(msg.ToUserName));
 						};
 						pass['ToUserName']=msg.ToUserName;
 						pass['content']=msg.Content;
@@ -323,7 +326,6 @@ module.exports =wx_login;
 //something you would want to konw
 /*
 msgtype of wechatmsg, you can deal with it to do what you want to do.
-
 MSGTYPE_TEXT: 1,
 MSGTYPE_IMAGE: 3,
 MSGTYPE_VOICE: 34,
