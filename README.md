@@ -2,4 +2,4 @@
 a robot of wecaht
 
 需要安装的npm模块
-request get-pixels colors
+request get-pixels
